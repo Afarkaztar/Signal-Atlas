@@ -27,10 +27,12 @@ class SystemNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
+        $path = $this->url ? (parse_url($this->url, PHP_URL_PATH) ?: $this->url) : null;
+
         return [
             'title' => $this->title,
             'message' => $this->message,
-            'url' => $this->url,
+            'url' => $path,
             'icon' => $this->icon,
             'tone' => $this->tone,
         ];

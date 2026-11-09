@@ -99,6 +99,25 @@
                 <div class="row between mt-1"><span class="badge b-{{ $report->project->status }}">{{ $report->project->statusLabel() }}</span><b class="mono">{{ $report->project->progress }}%</b></div>
                 <div class="progress mt-1"><span data-width="{{ $report->project->progress }}"></span></div>
             </a>
+        @elseif ($user->isStaff() && $report->status === 'verified')
+            <div class="card" data-reveal>
+                <h3 class="card-title"><i data-lucide="hard-hat"></i> Tindak lanjut infrastruktur</h3>
+                <p class="card-sub">Tautkan laporan terverifikasi ini ke proyek di wilayah <b>{{ $report->region->name }}</b>, atau usulkan proyek baru.</p>
+                @if ($availableProjects->isNotEmpty())
+                    <form method="POST" action="{{ route('reports.linkProject', $report) }}" class="stack mt-2" style="gap:10px">
+                        @csrf
+                        <select class="select" name="infrastructure_project_id" required>
+                            @foreach ($availableProjects as $p)
+                                <option value="{{ $p->id }}">{{ $p->code }} · {{ $p->title }} ({{ $p->statusLabel() }})</option>
+                            @endforeach
+                        </select>
+                        <button class="btn btn-primary btn-sm" type="submit"><i data-lucide="link"></i> Tautkan ke proyek ini</button>
+                    </form>
+                @endif
+                <a href="{{ route('projects.create', ['region_id' => $report->region_id]) }}" class="btn btn-sm btn-block mt-2">
+                    <i data-lucide="plus"></i> Usulkan proyek baru di {{ $report->region->name }}
+                </a>
+            </div>
         @endif
 
         <div class="card" data-reveal>

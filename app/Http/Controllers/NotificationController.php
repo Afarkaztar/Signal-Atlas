@@ -28,7 +28,15 @@ class NotificationController extends Controller
             return response()->json(['ok' => true, 'unread' => $request->user()->unreadNotifications()->count()]);
         }
 
-        return $notification->data['url'] ? redirect($notification->data['url']) : back();
+        $url = $notification->data['url'] ?? null;
+        if ($url) {
+            $path = parse_url($url, PHP_URL_PATH) ?: '/';
+            $query = parse_url($url, PHP_URL_QUERY);
+
+            return redirect($path.($query ? '?'.$query : ''));
+        }
+
+        return back();
     }
 
     public function readAll(Request $request): RedirectResponse

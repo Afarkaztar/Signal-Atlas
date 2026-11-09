@@ -82,6 +82,7 @@ Route::middleware(['auth', 'role'])->group(function () {
         Route::post('/verifikasi/{report}/setujui', [VerificationController::class, 'verify'])->name('verification.verify');
         Route::post('/verifikasi/{report}/tolak', [VerificationController::class, 'reject'])->name('verification.reject');
         Route::post('/verifikasi/massal', [VerificationController::class, 'bulk'])->name('verification.bulk');
+        Route::post('/laporan/{report}/tautkan-proyek', [ReportController::class, 'linkProject'])->name('reports.linkProject');
 
         Route::get('/prioritas', [PriorityController::class, 'index'])->name('priorities.index');
 

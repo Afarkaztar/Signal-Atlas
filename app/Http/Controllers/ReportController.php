@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Country;
+use App\Models\InfrastructureProject;
 use App\Models\Region;
 use App\Models\Report;
 use App\Models\User;
@@ -107,8 +108,33 @@ class ReportController extends Controller
             ->latest()->take(5)->get();
 
         $breakdown = $this->severity->calculate($report->only(['download_mbps', 'latency_ms', 'issue_type', 'technology']))['breakdown'];
+        $availableProjects = $request->user()->isStaff()
+            ? InfrastructureProject::where('region_id', $report->region_id)
+                ->whereNotIn('status', ['rejected', 'cancelled'])
+                ->orderByDesc('created_at')->get()
+            : collect();
 
-        return view('reports.show', compact('report', 'nearby', 'breakdown'));
+        return view('reports.show', compact('report', 'nearby', 'breakdown', 'availableProjects'));
+    }
+
+    public function linkProject(Request $request, Report $report): RedirectResponse
+    {
+        $data = $request->validate([
+            'infrastructure_project_id' => ['required', 'exists:infrastructure_projects,id'],
+        ]);
+
+        $project = InfrastructureProject::findOrFail($data['infrastructure_project_id']);
+        $updates = ['infrastructure_project_id' => $project->id];
+
+        if ($project->status === 'completed' && $report->status === 'verified') {
+            $updates['status'] = 'resolved';
+            $updates['resolved_at'] = now();
+        }
+
+        $report->update($updates);
+        ActivityLogger::log('report.update', "Menautkan laporan {$report->code} ke proyek {$project->code}", $report);
+
+        return back()->with('toast', ['success', "Laporan {$report->code} ditautkan ke proyek {$project->code}."]);
     }
 
     public function edit(Request $request, Report $report): View
