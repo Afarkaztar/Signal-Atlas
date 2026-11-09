@@ -90,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     SA.$('#clearHist').onclick = () => { localStorage.removeItem('sa_speed'); renderHist(); };
 
     const run = async () => {
+        SA.sfx?.sweep();
         SA.$('#gaugeIdle').style.display = 'none'; SA.$('#gaugeLive').style.display = 'grid'; SA.$('#afterActions').style.display = 'none';
         chart.data.labels = []; chart.data.datasets.forEach(d => d.data = []); chart.update();
 
@@ -100,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const t0 = performance.now();
             await fetch(`{{ route('speedtest.ping') }}?_=${Date.now()}`, { cache: 'no-store' });
             const rtt = performance.now() - t0; pings.push(rtt); setGauge(rtt, 300);
+            SA.sfx?.ping();
         }
         const ping = Math.round(Math.min(...pings));
         const jitter = Math.round(pings.slice(1).reduce((s, v, i) => s + Math.abs(v - pings[i]), 0) / (pings.length - 1));
@@ -141,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         up = +up.toFixed(2); SA.$('#mUp').textContent = up;
 
         SA.$('#phase').textContent = 'SELESAI ✓'; setGauge(down, 180);
+        SA.sfx?.complete();
         SA.$('#afterActions').style.display = 'flex';
         SA.$('#reportLink').href = `{{ route('reports.create') }}?download_mbps=${down}&upload_mbps=${up}&latency_ms=${ping}&source=speedtest`;
 

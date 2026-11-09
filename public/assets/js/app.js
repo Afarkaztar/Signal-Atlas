@@ -47,9 +47,68 @@
         return data;
     };
 
+    /* ---------- Subtle Web Audio UI Sound Effects ---------- */
+    let audioCtx = null;
+    const isMuted = () => localStorage.getItem('sa_mute') === '1';
+    const ctx = () => {
+        if (isMuted()) return null;
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        if (!audioCtx) audioCtx = new Ctx();
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+        return audioCtx;
+    };
+    const tone = (freq, dur = 0.08, type = 'sine', vol = 0.04, delay = 0, slideTo = null) => {
+        const c = ctx();
+        if (!c) return;
+        const t0 = c.currentTime + delay;
+        const osc = c.createOscillator();
+        const gain = c.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t0);
+        if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.linearRampToValueAtTime(vol, t0 + 0.008);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        osc.connect(gain).connect(c.destination);
+        osc.start(t0);
+        osc.stop(t0 + dur + 0.01);
+    };
+    SA.sfx = {
+        tap: () => tone(680, 0.035, 'sine', 0.025, 0, 880),
+        switch: () => tone(520, 0.055, 'triangle', 0.03, 0, 780),
+        ping: () => tone(1046.5, 0.09, 'sine', 0.03, 0, 1318.5),
+        sweep: () => { tone(330, 0.18, 'sine', 0.035, 0, 660); tone(660, 0.14, 'triangle', 0.025, 0.1, 990); },
+        success: () => { tone(587.33, 0.11, 'sine', 0.04, 0); tone(880, 0.18, 'sine', 0.045, 0.075); },
+        complete: () => { tone(523.25, 0.12, 'sine', 0.04, 0); tone(659.25, 0.14, 'sine', 0.04, 0.08); tone(1046.5, 0.26, 'triangle', 0.045, 0.16); },
+        warn: () => { tone(310, 0.12, 'triangle', 0.04, 0); tone(240, 0.18, 'triangle', 0.04, 0.09); },
+    };
+    SA.syncSoundBtn = () => {
+        const btn = $('#soundToggle');
+        if (!btn) return;
+        const m = isMuted();
+        btn.title = m ? 'Suara UI nonaktif (klik untuk aktifkan)' : 'Suara UI aktif (klik untuk bisukan)';
+        btn.style.color = m ? 'var(--dim)' : 'var(--mint)';
+        btn.innerHTML = `<i data-lucide="${m ? 'volume-x' : 'volume-2'}"></i>`;
+        SA.icons();
+    };
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('#soundToggle')) {
+            localStorage.setItem('sa_mute', isMuted() ? '0' : '1');
+            SA.syncSoundBtn();
+            if (!isMuted()) SA.sfx.success();
+            return;
+        }
+        if (e.target.closest('.btn-primary, .btn-violet, .btn-success, .demo-acc, .chip')) SA.sfx.tap();
+        else if (e.target.closest('.tab, .nav-link, [data-modal]')) SA.sfx.switch();
+    });
+
     /* ---------- Toasts ---------- */
     const toastIcons = { success: 'check-circle-2', danger: 'alert-octagon', warning: 'alert-triangle', info: 'info' };
     SA.toast = (message, tone = 'info') => {
+        if (tone === 'success') SA.sfx.success();
+        else if (tone === 'danger' || tone === 'warning') SA.sfx.warn();
+        else SA.sfx.tap();
         let box = $('.toasts');
         if (!box) { box = document.createElement('div'); box.className = 'toasts'; document.body.append(box); }
         const el = document.createElement('div');
@@ -279,6 +338,7 @@
         SA.tabs();
         SA.dropzones();
         SA.palette();
+        SA.syncSoundBtn();
         (window.__toasts || []).forEach(([tone, msg]) => setTimeout(() => SA.toast(msg, tone), 350));
     });
     window.addEventListener('load', () => setTimeout(() => $('.page-loader')?.classList.add('done'), 250));

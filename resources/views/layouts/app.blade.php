@@ -93,6 +93,7 @@
             </div>
             <div class="top-actions">
                 <button class="search-trigger" data-modal="palette"><i data-lucide="search" style="width:15px"></i><span>Cari menu & aksi…</span><kbd>Ctrl K</kbd></button>
+                <button type="button" class="icon-btn" id="soundToggle" aria-label="Toggle suara UI"><i data-lucide="volume-2"></i></button>
                 @auth
                     <a href="{{ route('notifications.index') }}" class="icon-btn" title="Notifikasi">
                         <i data-lucide="bell"></i>@if ($navCounts['unread'])<span class="dot" id="notifDot"></span>@endif
