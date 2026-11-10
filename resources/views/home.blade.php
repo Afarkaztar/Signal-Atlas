@@ -37,7 +37,8 @@
         <h1>Petakan <span class="grad-text">kesenjangan</span><br>digital Asia Tenggara.</h1>
         <p class="lead">
             SignalAtlas menghubungkan warga, analis, dan pemangku kebijakan: <b style="color:var(--text)">laporkan</b> masalah sinyal,
-            <b style="color:var(--text)">verifikasi</b> bersama, lalu ubah data menjadi <span class="typed" id="typed" style="color:var(--mint);font-weight:700"></span>
+            <b style="color:var(--text)">verifikasi</b> bersama, lalu ubah data menjadi<br>
+            <span class="typed" id="typed" style="color:var(--mint);font-weight:700;display:inline-block;min-height:1.7em"></span>
         </p>
         <div class="hero-cta">
             <a href="{{ auth()->check() ? route('reports.create') : route('register') }}" class="btn btn-primary btn-lg"><i data-lucide="radio-tower"></i> Laporkan Sinyal</a>
