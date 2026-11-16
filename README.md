@@ -2,54 +2,82 @@
 
 **Kelompok 11 · Kelas B2 · Pemrograman Web — IPB University**
 
-SignalAtlas adalah aplikasi web dinamis berbasis **Laravel 13** yang menghubungkan **warga (kontributor publik)**, **analis/verifikator**, dan **administrator/pemangku kebijakan** untuk memetakan kesenjangan konektivitas internet di 11 negara Asia Tenggara (ASEAN + Timor-Leste), memverifikasi laporan lapangan, menghitung skor prioritas wilayah secara otomatis, serta mengelola proyek pembangunan infrastruktur hingga masalah warga terselesaikan.
+SignalAtlas adalah aplikasi web dinamis berbasis **Laravel 13** yang menghubungkan **kontributor publik (warga)**, **analis/verifikator**, dan **administrator/pemangku kebijakan** untuk memetakan kesenjangan konektivitas internet di 11 negara Asia Tenggara (ASEAN + Timor-Leste), memverifikasi laporan lapangan secara berjenjang, menghitung skor prioritas wilayah (*Connectivity Gap Score*), serta mengelola siklus hidup proyek pembangunan infrastruktur hingga masalah warga terselesaikan.
 
 ---
 
-## Ringkasan Fitur & Alur Bisnis
+## Anggota Kelompok 11 & Pembagian Modul
+
+| No | Nama Anggota | Peran Sistem | Fokus Modul & Kontribusi Demonstrasi |
+|---|---|---|---|
+| 1 | **Afarik Rakas Berdi** | Administrator | Arsitektur sistem, Dashboard Eksekutif, Manajemen Pengguna (`/pengguna`), Persetujuan akhir proyek (`approved`/`cancelled`), & Audit Log (`/log-aktivitas`) |
+| 2 | **Fatma Azzuhra Rizqina** | Administrator | Analitik & **Digital Connectivity Index (DCI)** (`/analitik`), Manajemen Data Indikator Makro ASEAN (`/indikator`), & Ringkasan Eksekutif PDF (`/pusat-data/ringkasan-cetak`) |
+| 3 | **Muhammad Ishaq Raihan Najmi** | Analis / Verifikator | **Antrean Verifikasi Berjenjang** (`/verifikasi`), validasi/penolakan laporan publik (satuan & massal), & Pusat Impor/Ekspor CSV + Inspektur Database (`/pusat-data`) |
+| 4 | **Fathiya Raufa Rahman** | Analis / Verifikator | **Decision Support System Prioritas Wilayah** (`/prioritas`), Simulator Alokasi Anggaran, & Manajemen Proyek Infrastruktur Kanban (`/proyek`) |
+| 5 | **Revan Fadlan Bukit** | Kontributor Publik | Diagnostik **Speed Test Real-Time** (`/speedtest`), Pelaporan Sinyal Geospasial & Bukti Foto (`/laporan`), Peta Interaktif (`/peta`), & Sistem Reputasi/Notifikasi (`/notifikasi`) |
+
+---
+
+## Kredensial Akun Resmi (Login di `/masuk`)
+
+Seluruh akun anggota kelompok telah disiapkan melalui [`InitialAccountSeeder`](database/seeders/InitialAccountSeeder.php) tanpa data laporan/proyek *dummy*, sehingga seluruh alur data didemonstrasikan secara **live** oleh tim.
+
+> **Kata Sandi Default Seluruh Akun Tim:** `SignalAtlas2026!`
+
+| Nama | Email | Peran (`role`) | Hak Akses Utama |
+|---|---|---|---|
+| **Afarik Rakas Berdi** | `afarik@signalatlas.id` | `admin` (Administrator) | Akses penuh seluruh modul + persetujuan proyek & manajemen pengguna |
+| **Fatma Azzuhra Rizqina** | `fatma@signalatlas.id` | `admin` (Administrator) | Akses penuh seluruh modul + pengelolaan indikator, analitik DCI & laporan cetak |
+| **Muhammad Ishaq Raihan Najmi** | `ishaq@signalatlas.id` | `analyst` (Analis / Verifikator) | Verifikasi laporan warga, prioritas wilayah, proyek, indikator, impor/ekspor & inspektur DB |
+| **Fathiya Raufa Rahman** | `fathiya@signalatlas.id` | `analyst` (Analis / Verifikator) | Prioritas wilayah, simulator anggaran, pengusulan & pembaruan progres proyek |
+| **Revan Fadlan Bukit** | `revan@signalatlas.id` | `contributor` (Kontributor Publik) | Speed test, buat/ubah/hapus laporan sinyal, pantau proyek & poin reputasi |
+
+*(Anggota atau audiens juga dapat mendaftarkan akun kontributor baru secara langsung melalui halaman `/daftar`).*
+
+---
+
+## Alur Bisnis Utama (End-to-End Business Flow)
 
 ```
-[Warga / Speed Test] ──kirim──▶ Laporan (pending + skor keparahan otomatis 0–100)
-                                    │
-                       Analis verifikasi / tolak (+10 poin reputasi & notifikasi)
-                                    ▼
-                        Connectivity Gap Score per Wilayah
-                     + Rekomendasi Jenis Infrastruktur & Simulator Anggaran
-                                    │
-                       Usulkan Proyek (proposed → approved → in_progress → completed)
-                                    ▼
-             Proyek 100% selesai ──otomatis──▶ Laporan tertaut menjadi "resolved" (+5 poin)
+[1. Kontributor / Speed Test] ──kirim──▶ Laporan Sinyal (status: pending + Severity Score otomatis 0–100)
+                                                │
+[2. Analis / Verifikator]     ──tinjau──▶ Setujui (verified, +10 poin & notifikasi) / Tolak (rejected)
+                                                │
+[3. DSS Prioritas Wilayah]    ──hitung──▶ Connectivity Gap Score (0–100) + Rekomendasi Infrastruktur & Biaya
+                                                │
+[4. Analis & Administrator]   ──kelola──▶ Proyek Infrastruktur (proposed → approved → in_progress → completed)
+                                                │
+[5. Penyelesaian Otomatis]    ──100%───▶ Seluruh laporan tertaut otomatis menjadi "resolved" (+5 poin bonus)
 ```
 
-| Modul | Halaman / Route | Deskripsi |
-|---|---|---|
-| **Beranda Interaktif** | `/` | Hero animasi partikel & globe orbit, statistik langsung, peringkat DCI, laporan terbaru |
-| **Autentikasi & RBAC** | `/masuk`, `/daftar` | 3 peran: **Administrator**, **Analis/Verifikator**, **Kontributor Publik** |
-| **Dashboard** | `/dashboard` | KPI sesuai peran, grafik tren 6 bulan, papan peringkat kontributor, log aktivitas |
-| **Laporan Sinyal (CRUD)** | `/laporan/*` | Multi-filter, pencarian, pengurutan, pemilih titik peta & geolokasi, unggah foto bukti, pratinjau skor langsung dari server, ekspor CSV |
-| **Speed Test** | `/speedtest` | Uji ping, jitter, unduh, dan unggah langsung ke server + tombol "Kirim sebagai laporan" |
-| **Peta Geospasial** | `/peta` | Peta Leaflet dengan 3 layer (titik laporan berdenyut, lingkaran Gap Score wilayah, lokasi proyek) |
-| **Analitik & Indeks** | `/analitik` | 4 tab: Peringkat **Digital Connectivity Index (DCI)**, Tren 7 indikator (2015–2024), Perbandingan radar 2 negara, Statistik laporan publik |
-| **Antrean Verifikasi** | `/verifikasi` | Setujui/tolak cepat (AJAX), aksi massal, aturan anti-konflik kepentingan (tidak bisa meninjau laporan sendiri) |
-| **Prioritas Wilayah** | `/prioritas` | Perhitungan **Connectivity Gap Score**, rekomendasi infrastruktur (BTS/Fiber/Satelit/Microwave/Wi-Fi), simulator alokasi anggaran |
-| **Proyek Infrastruktur (CRUD)** | `/proyek/*` | Papan Kanban drag-and-drop + tabel, state machine 7 status, slider progres, riwayat timeline |
-| **Data Indikator (CRUD)** | `/indikator/*` | CRUD seri waktu 6 indikator resmi per negara & tahun + ekspor CSV |
-| **Pusat Data (Impor/Ekspor)** | `/pusat-data` | Impor CSV indikator & laporan (validasi per baris + mode *dry-run*), unduh template CSV, backup JSON, **Ringkasan Eksekutif siap cetak/PDF** |
-| **Manajemen Pengguna & Audit** | `/pengguna`, `/log-aktivitas`, `/notifikasi`, `/profil` | Kelola peran/status akun, audit trail semua aksi, notifikasi in-app, pengaturan profil & sandi |
+---
+
+## Cara Mengecek Database Secara Langsung (Lokal & Vercel)
+
+1. **Langsung dari Website (Inspektur Database Live):**
+   - Login menggunakan akun **Administrator** atau **Analis**, lalu buka menu **Pusat Data (`/pusat-data`)** dan gulir ke bagian **Inspektur Database Live** (atau klik tombol **Inspektur Database** di kanan atas).
+   - Di sana terlihat driver aktif (`SQLITE` / `PGSQL` / `MYSQL`), jumlah baris setiap tabel (`users`, `countries`, `regions`, `indicators`, `reports`, `infrastructure_projects`, `project_updates`, `activity_logs`, `notifications`), serta **25 baris terbaru** dari tabel yang dipilih secara *real-time*.
+   - Anda juga dapat mengunduh **Backup JSON** (`/pusat-data/backup-json`) atau file **`.sqlite`** (`/pusat-data/unduh-sqlite`).
+
+2. **Menghubungkan Database Cloud Permanen di Vercel (Agar Input 5 Laptop Tersimpan Permanen):**
+   - Buat database PostgreSQL gratis di **Neon.tech** atau **Supabase**.
+   - Masukkan variabel berikut pada **Vercel Dashboard → Project Settings → Environment Variables**:
+     ```env
+     DB_CONNECTION=pgsql
+     DB_HOST=<host-database-cloud>
+     DB_PORT=5432
+     DB_DATABASE=<nama-db>
+     DB_USERNAME=<username>
+     DB_PASSWORD=<password>
+     ```
+   - Jalankan migrasi & seeder ke database cloud tersebut satu kali dari komputer lokal:
+     ```bash
+     php artisan migrate:fresh --seed
+     ```
 
 ---
 
-## Akun Demo (Kata sandi: `password`)
-
-| Peran | Email | Hak Akses |
-|---|---|---|
-| **Administrator** | `admin@signalatlas.id` | Seluruh fitur + persetujuan proyek & manajemen pengguna |
-| **Analis / Verifikator** | `analis@signalatlas.id` | Verifikasi laporan, prioritas wilayah, proyek, indikator, impor/ekspor |
-| **Kontributor Publik** | `kontributor@signalatlas.id` | Speed test, buat/ubah/hapus laporan sendiri, pantau proyek & reputasi |
-
----
-
-## Cara Menjalankan
+## Cara Menjalankan di Lokal
 
 ```bash
 composer install

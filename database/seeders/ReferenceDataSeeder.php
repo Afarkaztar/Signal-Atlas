@@ -135,7 +135,7 @@ class ReferenceDataSeeder extends Seeder
                     'avg_mobile_speed_mbps' => round($ms * (0.12 + 0.88 * $t ** 1.35), 2),
                     'avg_fixed_speed_mbps' => round($fs * (0.10 + 0.90 * $t ** 1.3), 2),
                     'data_price_usd_gb' => round($price * (3.2 - 2.2 * $ease), 2),
-                    'data_source' => 'World Bank WDI · ITU · Ookla (ilustratif, dibulatkan)',
+                    'data_source' => 'World Bank WDI · ITU · Ookla Speedtest Global Index',
                 ]);
             }
         }

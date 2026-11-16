@@ -9,6 +9,10 @@
         <p class="page-sub">Impor massal dari CSV (dengan validasi per-baris & mode dry-run), unduh template, ekspor dataset, atau cetak ringkasan eksekutif PDF.</p>
     </div>
     <div class="head-actions">
+        <a href="#db-inspector" class="btn"><i data-lucide="database-zap"></i> Inspektur Database</a>
+        @if ($dbInfo['is_sqlite'])
+            <a href="{{ route('data.sqlite') }}" class="btn"><i data-lucide="hard-drive-download"></i> Unduh .sqlite</a>
+        @endif
         <a href="{{ route('data.print') }}" target="_blank" class="btn"><i data-lucide="printer"></i> Ringkasan Cetak / PDF</a>
         <a href="{{ route('data.backup') }}" class="btn btn-violet"><i data-lucide="archive"></i> Backup JSON</a>
     </div>
@@ -107,5 +111,60 @@
             @endforelse
         </div>
     </div>
+</div>
+
+{{-- ================= INSPEKTUR DATABASE LIVE ================= --}}
+<div class="card mt-3" id="db-inspector">
+    <div class="card-head">
+        <div>
+            <h3 class="card-title"><i data-lucide="database-zap"></i> Inspektur Database Live</h3>
+            <div class="card-sub">
+                Driver aktif: <b class="mono" style="color:var(--mint)">{{ strtoupper($dbInfo['driver']) }}</b>
+                · Database: <b class="mono">{{ $dbInfo['database'] }}</b>
+                · Host: <span class="mono">{{ $dbInfo['host'] }}</span>
+                — menampilkan 25 baris terbaru dari tabel yang dipilih.
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-pills">
+        @foreach ($allowedTables as $tbl => $lbl)
+            <a href="{{ route('data.index', ['table' => $tbl]).'#db-inspector' }}" class="chip {{ $inspectTable === $tbl ? 'active' : '' }}">
+                <span class="mono">{{ $tbl }}</span> <b>{{ $tableCounts[$tbl] ?? 0 }}</b>
+            </a>
+        @endforeach
+    </div>
+
+    @if ($previewRows->isEmpty())
+        <div class="empty" style="padding:30px">
+            <div class="empty-icon"><i data-lucide="table-2"></i></div>
+            <h3>Tabel <span class="mono">{{ $inspectTable }}</span> masih kosong (0 baris)</h3>
+            <p>Data yang ditambahkan melalui aplikasi akan langsung muncul di sini secara real-time.</p>
+        </div>
+    @else
+        @php $columns = array_keys($previewRows->first()); @endphp
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        @foreach ($columns as $col)
+                            <th class="mono">{{ $col }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($previewRows as $row)
+                        <tr>
+                            @foreach ($columns as $col)
+                                <td class="mono" style="font-size:11.5px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ is_scalar($row[$col]) ? $row[$col] : json_encode($row[$col]) }}">
+                                    {{ is_scalar($row[$col]) || is_null($row[$col]) ? ($row[$col] ?? 'NULL') : json_encode($row[$col]) }}
+                                </td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 </div>
 @endsection

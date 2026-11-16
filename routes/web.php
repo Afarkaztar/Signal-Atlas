@@ -104,6 +104,7 @@ Route::middleware(['auth', 'role'])->group(function () {
         Route::post('/pusat-data/impor/{type}', [DataCenterController::class, 'import'])->name('data.import');
         Route::get('/pusat-data/ringkasan-cetak', [DataCenterController::class, 'print'])->name('data.print');
         Route::get('/pusat-data/backup-json', [DataCenterController::class, 'backup'])->name('data.backup');
+        Route::get('/pusat-data/unduh-sqlite', [DataCenterController::class, 'downloadSqlite'])->name('data.sqlite');
 
         Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('activity.index');
     });

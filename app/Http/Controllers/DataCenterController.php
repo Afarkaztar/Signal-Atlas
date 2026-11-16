@@ -31,21 +31,74 @@ class DataCenterController extends Controller
 {
     public const REPORT_HEADERS = ['iso3', 'region', 'provider', 'technology', 'issue_type', 'download_mbps', 'upload_mbps', 'latency_ms', 'latitude', 'longitude', 'description'];
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $allowedTables = [
+            'users' => 'Pengguna (users)',
+            'countries' => 'Negara (countries)',
+            'regions' => 'Wilayah (regions)',
+            'indicators' => 'Indikator (indicators)',
+            'reports' => 'Laporan Sinyal (reports)',
+            'infrastructure_projects' => 'Proyek Infrastruktur (infrastructure_projects)',
+            'project_updates' => 'Riwayat Proyek (project_updates)',
+            'activity_logs' => 'Log Aktivitas (activity_logs)',
+            'notifications' => 'Notifikasi (notifications)',
+        ];
+
+        $inspectTable = array_key_exists($request->query('table', 'users'), $allowedTables)
+            ? $request->query('table', 'users')
+            : 'users';
+
+        $tableCounts = collect(array_keys($allowedTables))
+            ->mapWithKeys(fn (string $t) => [$t => DB::table($t)->count()]);
+
+        $previewRows = DB::table($inspectTable)
+            ->orderByDesc($inspectTable === 'notifications' ? 'created_at' : 'id')
+            ->limit(25)
+            ->get()
+            ->map(function ($row) {
+                $arr = (array) $row;
+                unset($arr['password'], $arr['remember_token']);
+
+                return $arr;
+            });
+
+        $connection = config('database.default');
+        $dbConfig = config("database.connections.$connection");
+
         return view('data.index', [
             'counts' => [
-                'countries' => Country::count(),
-                'regions' => Region::count(),
-                'indicators' => Indicator::count(),
-                'reports' => Report::count(),
-                'projects' => InfrastructureProject::count(),
+                'countries' => $tableCounts['countries'],
+                'regions' => $tableCounts['regions'],
+                'indicators' => $tableCounts['indicators'],
+                'reports' => $tableCounts['reports'],
+                'projects' => $tableCounts['infrastructure_projects'],
+            ],
+            'allowedTables' => $allowedTables,
+            'tableCounts' => $tableCounts,
+            'inspectTable' => $inspectTable,
+            'previewRows' => $previewRows,
+            'dbInfo' => [
+                'driver' => $connection,
+                'database' => $connection === 'sqlite' ? basename((string) ($dbConfig['database'] ?? 'database.sqlite')) : ($dbConfig['database'] ?? $connection),
+                'host' => $dbConfig['host'] ?? 'local / serverless',
+                'is_sqlite' => $connection === 'sqlite' && is_file((string) ($dbConfig['database'] ?? '')),
             ],
             'history' => ActivityLog::with('user')
                 ->where(fn ($q) => $q->where('action', 'like', '%import%')->orWhere('action', 'like', '%export%')->orWhere('action', 'like', '%backup%'))
                 ->latest()->take(10)->get(),
             'countries' => Country::orderBy('name')->get(),
         ]);
+    }
+
+    public function downloadSqlite()
+    {
+        $path = (string) config('database.connections.sqlite.database');
+        abort_unless(config('database.default') === 'sqlite' && is_file($path), 404, 'Database aktif bukan file SQLite.');
+
+        ActivityLogger::log('data.backup', 'Mengunduh file database SQLite');
+
+        return response()->download($path, 'signalatlas-'.now()->format('Ymd-His').'.sqlite');
     }
 
     public function template(string $type): StreamedResponse
