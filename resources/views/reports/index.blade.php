@@ -27,16 +27,16 @@
     </div>
 @endunless
 
-<div class="filter-pills">
+<div class="filter-pills" id="statusPills">
     @php $total = $summary->sum(); @endphp
-    <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}" class="chip {{ empty($filters['status']) ? 'active' : '' }}">Semua <b>{{ $total }}</b></a>
+    <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}" data-ajax-link data-no-progress class="chip {{ empty($filters['status']) ? 'active' : '' }}">Semua <b>{{ $total }}</b></a>
     @foreach (config('signal.report_statuses') as $key => $label)
-        <a href="{{ request()->fullUrlWithQuery(['status' => $key, 'page' => null]) }}" class="chip {{ ($filters['status'] ?? '') === $key ? 'active' : '' }}">{{ $label }} <b>{{ $summary[$key] ?? 0 }}</b></a>
+        <a href="{{ request()->fullUrlWithQuery(['status' => $key, 'page' => null]) }}" data-ajax-link data-no-progress class="chip {{ ($filters['status'] ?? '') === $key ? 'active' : '' }}">{{ $label }} <b>{{ $summary[$key] ?? 0 }}</b></a>
     @endforeach
 </div>
 
 <div class="card">
-    <form class="toolbar" method="GET" id="filterForm">
+    <form class="toolbar" method="GET" id="filterForm" data-no-progress>
         <input type="hidden" name="scope" value="{{ $scope }}">
         <input type="hidden" name="status" value="{{ $filters['status'] ?? '' }}">
         <div class="input-icon grow"><i data-lucide="search"></i><input class="input" style="width:100%" name="q" value="{{ $filters['q'] ?? '' }}" placeholder="Cari kode, provider, wilayah, deskripsi…"></div>
@@ -46,21 +46,22 @@
         <input class="input" type="date" name="from" value="{{ $filters['from'] ?? '' }}" title="Dari tanggal" data-auto>
         <input class="input" type="date" name="to" value="{{ $filters['to'] ?? '' }}" title="Sampai tanggal" data-auto>
         <button class="btn btn-sm" type="submit" data-keep><i data-lucide="filter"></i> Terapkan</button>
-        @if (array_filter($filters))<a href="{{ route('reports.index', ['scope' => $scope]) }}" class="btn btn-sm btn-ghost"><i data-lucide="x"></i> Reset</a>@endif
+        @if (array_filter($filters))<a href="{{ route('reports.index', ['scope' => $scope]) }}" data-ajax-link data-no-progress class="btn btn-sm btn-ghost"><i data-lucide="x"></i> Reset</a>@endif
     </form>
 
+    <div id="reportsTableRegion" style="transition:opacity .2s var(--ease)">
     @if ($reports->isEmpty())
         <div class="empty"><div class="empty-icon"><i data-lucide="search-x"></i></div><h3>Tidak ada laporan ditemukan</h3><p>Coba ubah filter atau buat laporan baru.</p></div>
     @else
         <div class="table-wrap">
             <table class="table">
                 <thead><tr>
-                    <th><a href="{{ $sortLink('code') }}">Kode <i data-lucide="{{ $sortIcon('code') }}" style="width:12px"></i></a></th>
+                    <th><a href="{{ $sortLink('code') }}" data-ajax-link data-no-progress>Kode <i data-lucide="{{ $sortIcon('code') }}" style="width:12px"></i></a></th>
                     <th>Wilayah</th><th>Provider · Teknologi</th><th>Masalah</th>
-                    <th class="num"><a href="{{ $sortLink('download_mbps') }}">Unduh <i data-lucide="{{ $sortIcon('download_mbps') }}" style="width:12px"></i></a></th>
-                    <th><a href="{{ $sortLink('severity_score') }}">Skor <i data-lucide="{{ $sortIcon('severity_score') }}" style="width:12px"></i></a></th>
+                    <th class="num"><a href="{{ $sortLink('download_mbps') }}" data-ajax-link data-no-progress>Unduh <i data-lucide="{{ $sortIcon('download_mbps') }}" style="width:12px"></i></a></th>
+                    <th><a href="{{ $sortLink('severity_score') }}" data-ajax-link data-no-progress>Skor <i data-lucide="{{ $sortIcon('severity_score') }}" style="width:12px"></i></a></th>
                     <th>Status</th>
-                    <th><a href="{{ $sortLink('created_at') }}">Tanggal <i data-lucide="{{ $sortIcon('created_at') }}" style="width:12px"></i></a></th>
+                    <th><a href="{{ $sortLink('created_at') }}" data-ajax-link data-no-progress>Tanggal <i data-lucide="{{ $sortIcon('created_at') }}" style="width:12px"></i></a></th>
                     <th></th>
                 </tr></thead>
                 <tbody class="stagger">
@@ -94,11 +95,52 @@
         </div>
         {{ $reports->links() }}
     @endif
+    </div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
-    document.querySelectorAll('[data-auto]').forEach(el => el.addEventListener('change', () => document.getElementById('filterForm').submit()));
+(() => {
+    const loadTable = async (url, push = true) => {
+        const region = document.getElementById('reportsTableRegion');
+        if (!region) return;
+        region.style.opacity = '.45';
+        SA.sfx?.switch();
+        try {
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const nextRegion = doc.getElementById('reportsTableRegion');
+            const nextPills = doc.getElementById('statusPills');
+            if (nextRegion) region.innerHTML = nextRegion.innerHTML;
+            if (nextPills) document.getElementById('statusPills').innerHTML = nextPills.innerHTML;
+            // Tandai link pagination agar juga tanpa reload
+            region.querySelectorAll('.pagination a.page-btn').forEach(a => a.setAttribute('data-no-progress', ''));
+            if (push) history.pushState(null, '', url);
+            SA.icons();
+        } finally {
+            region.style.opacity = '1';
+        }
+    };
+
+    document.querySelectorAll('#reportsTableRegion .pagination a.page-btn').forEach(a => a.setAttribute('data-no-progress', ''));
+
+    document.addEventListener('click', (e) => {
+        const a = e.target.closest('[data-ajax-link], #reportsTableRegion .pagination a.page-btn');
+        if (!a || a.classList.contains('disabled')) return;
+        e.preventDefault();
+        loadTable(a.href);
+    });
+
+    const form = document.getElementById('filterForm');
+    const submitAjax = () => {
+        const params = new URLSearchParams(new FormData(form));
+        loadTable(`${form.action || location.pathname}?${params.toString()}`);
+    };
+    form?.addEventListener('submit', (e) => { e.preventDefault(); submitAjax(); });
+    document.querySelectorAll('[data-auto]').forEach(el => el.addEventListener('change', submitAjax));
+    window.addEventListener('popstate', () => loadTable(location.href, false));
+})();
 </script>
 @endpush
