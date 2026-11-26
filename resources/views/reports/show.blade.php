@@ -54,7 +54,7 @@
     <div class="stack">
         <div class="card" data-reveal>
             <h3 class="card-title mb-2"><i data-lucide="file-text"></i> Detail laporan</h3>
-            <p style="font-size:14.5px;line-height:1.7;margin:0 0 18px">{{ $report->description }}</p>
+            <div class="rich-content" style="margin:0 0 18px">{!! $report->safeDescriptionHtml() !!}</div>
             <div class="detail-grid">
                 <div class="detail-item"><div class="k">Wilayah</div><div class="v">{{ $report->region->name }}</div><div class="dim" style="font-size:12px">{{ $report->region->country->flag() }} {{ $report->region->country->name }} · {{ $report->region->areaLabel() }}</div></div>
                 <div class="detail-item"><div class="k">Provider</div><div class="v">{{ $report->provider }}</div><div class="dim" style="font-size:12px">{{ $report->technologyLabel() }}</div></div>

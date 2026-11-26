@@ -102,4 +102,33 @@ class ExampleTest extends TestCase
         $this->assertDatabaseHas('indicators', ['country_id' => Country::where('iso3', 'IDN')->value('id'), 'year' => 2025]);
         $this->actingAs($admin)->get(route('reports.export'))->assertOk();
     }
+
+    public function test_wysiwyg_report_description_is_formatted_and_sanitized(): void
+    {
+        $contributor = User::where('role', 'contributor')->first();
+        $region = Region::first();
+
+        $richHtml = '<h4>Kronologi Gangguan</h4><p>Sinyal <strong>4G hilang total</strong> setiap jam <em>18.00 - 22.00</em>.</p><ul><li>Sekolah terdampak</li><li>Puskesmas terdampak</li></ul><script>alert(1)</script><p onclick="evil()"><a href="javascript:alert(2)">Tautan jahat</a> dan <a href="https://speedtest.net">Hasil Uji</a></p>';
+
+        $this->actingAs($contributor)->post('/laporan', [
+            'region_id' => $region->id,
+            'provider' => 'Telkomsel',
+            'technology' => '4g',
+            'issue_type' => 'unstable',
+            'description' => $richHtml,
+        ])->assertRedirect();
+
+        $report = Report::latest('id')->first();
+        $this->assertStringContainsString('<strong>4G hilang total</strong>', $report->description);
+        $this->assertStringContainsString('<ul><li>Sekolah terdampak</li>', $report->description);
+        $this->assertStringContainsString('href="https://speedtest.net"', $report->description);
+        $this->assertStringNotContainsString('<script>', $report->description);
+        $this->assertStringNotContainsString('onclick', $report->description);
+        $this->assertStringNotContainsString('javascript:', $report->description);
+        $this->assertStringNotContainsString('<strong>', $report->plainDescription());
+
+        $this->actingAs($contributor)->get(route('reports.show', $report))
+            ->assertOk()
+            ->assertSee('Kronologi Gangguan', false);
+    }
 }

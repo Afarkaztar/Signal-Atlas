@@ -103,4 +103,117 @@ class Report extends Model
     {
         return config('signal.severity_levels.'.$this->severity_level, $this->severity_level);
     }
+
+    /** Ekstrak teks murni tanpa tag HTML (untuk tabel ringkasan, validasi panjang, & ekspor CSV). */
+    public static function toPlainText(?string $html): string
+    {
+        if ($html === null || $html === '') {
+            return '';
+        }
+        $spaced = preg_replace('/<(br|\/p|\/div|\/li|\/h[1-6]|\/blockquote|\/pre)\b[^>]*>/i', ' ', $html);
+        $decoded = html_entity_decode(strip_tags((string) $spaced), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim((string) preg_replace('/\s+/u', ' ', $decoded));
+    }
+
+    public function plainDescription(): string
+    {
+        return self::toPlainText($this->description);
+    }
+
+    /** Sanitasi HTML dari WYSIWYG editor dengan whitelist tag & atribut aman (anti-XSS). */
+    public static function sanitizeHtml(?string $input): string
+    {
+        $input = trim((string) $input);
+        if ($input === '') {
+            return '';
+        }
+
+        // Jika teks biasa tanpa tag HTML, ubah baris baru menjadi paragraf aman
+        if ($input === strip_tags($input)) {
+            return '<p>'.nl2br(e($input), false).'</p>';
+        }
+
+        $allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'ul', 'ol', 'li', 'blockquote', 'h3', 'h4', 'code', 'pre', 'a'];
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $prev = libxml_use_internal_errors(true);
+        $dom->loadHTML(
+            '<?xml encoding="utf-8" ?><div id="__root">'.$input.'</div>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
+
+        $root = $dom->getElementById('__root');
+        if (! $root) {
+            return '<p>'.e(self::toPlainText($input)).'</p>';
+        }
+
+        $cleanNode = function (\DOMNode $node) use (&$cleanNode, $allowedTags): void {
+            foreach (iterator_to_array($node->childNodes) as $child) {
+                if ($child instanceof \DOMComment) {
+                    $node->removeChild($child);
+
+                    continue;
+                }
+
+                if ($child instanceof \DOMElement) {
+                    $tag = strtolower($child->tagName);
+
+                    if (in_array($tag, ['script', 'style', 'iframe', 'object', 'embed', 'svg', 'math', 'form'], true)) {
+                        $node->removeChild($child);
+
+                        continue;
+                    }
+
+                    $cleanNode($child);
+
+                    if (! in_array($tag, $allowedTags, true)) {
+                        // Pindahkan isi anak ke induknya (unwrap tag tidak dikenal seperti div/span)
+                        while ($child->firstChild) {
+                            $node->insertBefore($child->firstChild, $child);
+                        }
+                        $node->removeChild($child);
+
+                        continue;
+                    }
+
+                    // Bersihkan semua atribut kecuali href yang valid pada <a>
+                    $href = $tag === 'a' ? trim($child->getAttribute('href')) : '';
+                    while ($child->attributes->length > 0) {
+                        $child->removeAttributeNode($child->attributes->item(0));
+                    }
+
+                    if ($tag === 'a') {
+                        if (preg_match('/^https?:\/\/[^\s<>"]+$/i', $href)) {
+                            $child->setAttribute('href', $href);
+                            $child->setAttribute('target', '_blank');
+                            $child->setAttribute('rel', 'noopener noreferrer');
+                        } else {
+                            while ($child->firstChild) {
+                                $node->insertBefore($child->firstChild, $child);
+                            }
+                            $node->removeChild($child);
+                        }
+                    }
+                }
+            }
+        };
+
+        $cleanNode($root);
+
+        $output = '';
+        foreach ($root->childNodes as $child) {
+            $output .= $dom->saveHTML($child);
+        }
+
+        return trim($output);
+    }
+
+    /** HTML terformat yang sudah disanitasi untuk ditampilkan pada detail laporan. */
+    public function safeDescriptionHtml(): string
+    {
+        return self::sanitizeHtml($this->description);
+    }
 }

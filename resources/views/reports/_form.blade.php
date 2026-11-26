@@ -68,10 +68,25 @@
 
         {{-- Langkah 3: deskripsi --}}
         <div class="card" data-reveal>
-            <div class="card-head"><div><h3 class="card-title"><span class="badge b-neutral no-dot">3</span> Deskripsi & bukti</h3></div></div>
+            <div class="card-head">
+                <div>
+                    <h3 class="card-title"><span class="badge b-neutral no-dot">3</span> Deskripsi & bukti</h3>
+                    <div class="card-sub">Format laporan dengan cetak tebal, daftar poin, kutipan, atau blok log teknis agar mudah diverifikasi analis.</div>
+                </div>
+                <button type="button" class="btn btn-xs" id="insertTemplateBtn" title="Sisipkan kerangka laporan terstruktur">
+                    <i data-lucide="file-plus-2"></i> Template kronologi
+                </button>
+            </div>
             <div class="field mb-2">
-                <label class="label">Ceritakan kondisinya <span class="hint"><span id="charCount">0</span>/2000</span></label>
-                <textarea class="textarea @error('description') is-invalid @enderror" name="description" id="desc" maxlength="2000" required placeholder="Contoh: Sejak sebulan terakhir sinyal hilang setiap sore di sekitar pasar desa…">{{ old('description', $report->description) }}</textarea>
+                <label class="label" for="desc">
+                    <span>Ceritakan kondisinya</span>
+                    <span class="hint"><span id="charCount">0</span>/2000 karakter</span>
+                </label>
+                <div class="wysiwyg-wrap @error('description') is-invalid @enderror" id="wysiwygWrap">
+                    <div id="descEditor"></div>
+                </div>
+                <textarea class="textarea @error('description') is-invalid @enderror" name="description" id="desc" placeholder="Contoh: Sejak sebulan terakhir sinyal hilang setiap sore di sekitar pasar desa…" style="display:none">{{ old('description', $report->description) }}</textarea>
+                @error('description')<span class="error-text"><i data-lucide="alert-circle" style="width:13px"></i>{{ $message }}</span>@enderror
             </div>
             <label class="dropzone" data-preview="photoPreview">
                 <input type="file" name="photo" accept="image/*">
@@ -105,6 +120,8 @@
 @push('head')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 @endpush
 
 @push('scripts')
@@ -138,12 +155,89 @@ document.addEventListener('DOMContentLoaded', () => {
         navigator.geolocation.getCurrentPosition(p => { setPoint(p.coords.latitude, p.coords.longitude, 12); SA.toast('Lokasi Anda berhasil ditandai', 'success'); }, () => SA.toast('Izin lokasi ditolak', 'danger'));
     };
 
-    // Penghitung karakter
-    const desc = document.getElementById('desc'), cc = document.getElementById('charCount');
-    const count = () => cc.textContent = desc.value.length; desc.addEventListener('input', count); count();
+    // WYSIWYG Editor (Quill 2.0) + graceful fallback ke textarea
+    const desc = document.getElementById('desc'), cc = document.getElementById('charCount'), wrap = document.getElementById('wysiwygWrap');
+    const form = desc.closest('form');
+
+    if (window.Quill) {
+        const quill = new Quill('#descEditor', {
+            theme: 'snow',
+            placeholder: 'Ceritakan kronologi gangguan, jam terjadinya, serta dampaknya bagi aktivitas warga…',
+            modules: {
+                toolbar: [
+                    [{ header: [3, 4, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    ['blockquote', 'code-block', 'link'],
+                    ['clean'],
+                ],
+            },
+        });
+
+        // Muat nilai awal (mendukung HTML maupun plain text lama)
+        const initial = desc.value.trim();
+        if (initial) {
+            if (/<[a-z][\s\S]*>/i.test(initial)) {
+                quill.clipboard.dangerouslyPasteHTML(initial);
+            } else {
+                quill.setText(initial);
+            }
+        }
+
+        const syncEditor = () => {
+            const plain = quill.getText().replace(/\n+$/, '');
+            const len = plain.trim().length;
+            cc.textContent = len;
+            cc.style.color = len > 2000 ? 'var(--red)' : (len >= 15 ? 'var(--mint)' : '');
+            desc.value = len > 0 ? quill.getSemanticHTML() : '';
+        };
+
+        quill.on('text-change', syncEditor);
+        quill.root.addEventListener('focus', () => wrap.classList.add('focused'));
+        quill.root.addEventListener('blur', () => wrap.classList.remove('focused'));
+        syncEditor();
+
+        document.getElementById('insertTemplateBtn')?.addEventListener('click', () => {
+            const tpl = '<h4>Kronologi & Waktu Kejadian</h4><ul><li><strong>Sejak kapan:</strong> </li><li><strong>Jam paling parah:</strong> </li></ul><h4>Kondisi Teknis di Lapangan</h4><p>Jelaskan kondisi sinyal, cuaca, atau lokasi spesifik (sekolah/puskesmas/jalan poros)…</p><h4>Dampak bagi Warga</h4><p>Jelaskan aktivitas yang terhambat…</p>';
+            const currentLen = quill.getText().trim().length;
+            if (currentLen > 0) {
+                quill.clipboard.dangerouslyPasteHTML(quill.getLength() - 1, '<p><br></p>' + tpl);
+            } else {
+                quill.clipboard.dangerouslyPasteHTML(tpl);
+            }
+            quill.focus();
+            SA.toast('Template kronologi disisipkan ke editor', 'info');
+        });
+
+        form.addEventListener('submit', (e) => {
+            syncEditor();
+            const len = quill.getText().trim().length;
+            if (len < 15) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                wrap.classList.add('is-invalid');
+                quill.focus();
+                SA.toast('Deskripsi minimal harus berisi 15 karakter teks.', 'warning');
+            } else if (len > 2000) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                wrap.classList.add('is-invalid');
+                quill.focus();
+                SA.toast('Deskripsi melebihi batas 2000 karakter.', 'danger');
+            }
+        }, true);
+    } else {
+        // Fallback jika CDN Quill gagal dimuat
+        wrap.style.display = 'none';
+        desc.style.display = '';
+        desc.required = true;
+        const count = () => cc.textContent = desc.value.length;
+        desc.addEventListener('input', count);
+        count();
+    }
 
     // Pratinjau skor (AJAX ke server)
-    const form = desc.closest('form'), ring = document.getElementById('sevRing');
+    const ring = document.getElementById('sevRing');
     const labels = @json(config('signal.severity_levels'));
     let timer;
     const calc = async () => {

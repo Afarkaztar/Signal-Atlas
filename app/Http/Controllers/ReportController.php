@@ -199,7 +199,7 @@ class ReportController extends Controller
                 $r->code, $r->created_at->format('Y-m-d H:i'), $r->region->country->name, $r->region->name, $r->provider,
                 $r->technologyLabel(), $r->issueLabel(), $r->download_mbps, $r->upload_mbps, $r->latency_ms,
                 $r->severity_score, $r->severityLabel(), $r->statusLabel(), $r->source, $r->user?->name,
-                $r->latitude, $r->longitude, $r->description,
+                $r->latitude, $r->longitude, $r->plainDescription(),
             ])
         );
     }
@@ -234,7 +234,7 @@ class ReportController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'region_id' => ['required', 'exists:regions,id'],
             'provider' => ['required', 'string', 'max:60'],
             'technology' => ['required', Rule::in(array_keys(config('signal.technologies')))],
@@ -242,7 +242,19 @@ class ReportController extends Controller
             'download_mbps' => ['nullable', 'numeric', 'min:0', 'max:10000'],
             'upload_mbps' => ['nullable', 'numeric', 'min:0', 'max:10000'],
             'latency_ms' => ['nullable', 'integer', 'min:0', 'max:10000'],
-            'description' => ['required', 'string', 'min:15', 'max:2000'],
+            'description' => [
+                'required',
+                'string',
+                'max:15000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $len = mb_strlen(Report::toPlainText((string) $value));
+                    if ($len < 15) {
+                        $fail('Deskripsi minimal harus berisi 15 karakter teks.');
+                    } elseif ($len > 2000) {
+                        $fail('Deskripsi maksimal 2000 karakter teks.');
+                    }
+                },
+            ],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'photo' => ['nullable', 'image', 'max:2048'],
@@ -255,6 +267,10 @@ class ReportController extends Controller
             'upload_mbps' => 'kecepatan unggah',
             'latency_ms' => 'latensi',
         ]);
+
+        $validated['description'] = Report::sanitizeHtml($validated['description']);
+
+        return $validated;
     }
 
     private function authorizeView(User $user, Report $report): void

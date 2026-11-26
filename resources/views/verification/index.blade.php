@@ -49,7 +49,7 @@
                             <td>
                                 <a href="{{ route('reports.show', $r) }}" class="cell-main" style="color:var(--mint)">{{ $r->code }}</a>
                                 · <b>{{ $r->region->name }}</b> <span class="muted">({{ $r->region->country->name }})</span>
-                                <div class="cell-sub" style="max-width:420px">{{ Str::limit($r->description, 110) }}</div>
+                                <div class="cell-sub" style="max-width:420px">{{ Str::limit($r->plainDescription(), 110) }}</div>
                             </td>
                             <td>
                                 <div>{{ $r->issueLabel() }}</div>
