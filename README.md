@@ -91,3 +91,11 @@ Buka `http://localhost:8000` di browser. Untuk menjalankan pengujian otomatis:
 ```bash
 php artisan test
 ```
+
+---
+
+## Dokumentasi Teknis & Panduan Bedah Kode Tim
+
+Untuk penjelasan mendalam mengenai arsitektur 5-lapis, rumus perhitungan di `app/Services/`, pemetaan baris kode per anggota kelompok, alur demonstrasi *end-to-end*, serta arsitektur deployment Vercel, baca dokumen pendamping berikut:
+
+- **[`PANDUAN_TIM_DAN_BEDAH_KODE.md`](PANDUAN_TIM_DAN_BEDAH_KODE.md)** — Panduan Pencerdasan Kode, Arsitektur & Persiapan Presentasi Kelompok 11
