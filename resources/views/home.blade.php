@@ -4,6 +4,7 @@
     @include('partials.head')
 </head>
 <body>
+    <div class="signal-bg-fixed"></div>
 <div class="page-loader"><div class="loader-ring"><i></i><i></i><i></i></div></div>
 <div class="aurora"><span></span><span></span><span></span></div>
 

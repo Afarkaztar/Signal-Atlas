@@ -12,19 +12,19 @@
 
 {{-- Simulator anggaran --}}
 <div class="card glow-border mb-3" data-reveal>
-    <form class="row wrap between" method="GET">
-        <div style="flex:1;min-width:260px">
+    <form class="row wrap between" style="gap:24px;align-items:center" method="GET">
+        <div style="flex:1;min-width:320px">
             <h3 class="card-title"><i data-lucide="wallet"></i> Simulator alokasi anggaran</h3>
             <p class="card-sub">Geser anggaran untuk melihat wilayah mana saja yang dapat ditangani secara optimal (greedy berdasarkan skor efektif).</p>
-            <div class="row mt-2">
-                <input class="range" type="range" id="budgetRange" min="100000" max="5000000" step="50000" value="{{ $budget }}">
+            <div class="row wrap mt-2" style="gap:12px;align-items:center">
+                <input class="range" style="flex:1;min-width:140px" type="range" id="budgetRange" min="100000" max="5000000" step="50000" value="{{ $budget }}">
                 <input type="hidden" name="budget" id="budgetInput" value="{{ $budget }}">
                 <input type="hidden" name="country" value="{{ $countryId }}">
-                <b class="mono" style="font-size:18px;min-width:130px;text-align:right;color:var(--mint)" id="budgetLabel">${{ number_format($budget) }}</b>
-                <button class="btn btn-primary btn-sm" type="submit">Hitung alokasi</button>
+                <b class="mono" style="font-size:18px;min-width:115px;text-align:right;color:var(--mint);flex-shrink:0" id="budgetLabel">${{ number_format($budget) }}</b>
+                <button class="btn btn-primary btn-sm" style="white-space:nowrap;flex-shrink:0" type="submit">Hitung alokasi</button>
             </div>
         </div>
-        <div class="row" style="gap:24px">
+        <div class="row wrap" style="gap:24px">
             <div><span class="muted">Proyek terpilih</span><div style="font-size:28px;font-weight:800">{{ $allocation->count() }}</div></div>
             <div><span class="muted">Estimasi warga terjangkau</span><div style="font-size:28px;font-weight:800;color:var(--mint)">{{ number_format($allocation->sum('estimated_beneficiaries')) }}</div></div>
             <div><span class="muted">Sisa anggaran</span><div class="mono" style="font-size:22px;font-weight:700">${{ number_format($remaining) }}</div></div>
